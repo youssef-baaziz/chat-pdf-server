@@ -1,0 +1,26 @@
+[
+    {
+        "question": "c'est quoi la facture totale ? ",
+        "answer": "La facture totale est de 2 398,80 EUR TTC."
+    },
+    {
+        "question": "c'est quoi ce montant en dollar ",
+        "answer": "Je n'ai pas acc\u00e8s aux taux de change actuels pour convertir des euros en dollars. Je vous recommande de consulter un site de conversion de devises en ligne ou de contacter votre banque pour obtenir le taux de change le plus r\u00e9cent."
+    },
+    {
+        "question": "diviser par 2 ",
+        "answer": "La facture totale TTC est de 2 398,80 EUR. Si on divise cette somme par deux, le r\u00e9sultat serait de 1 199,40 EUR."
+    },
+    {
+        "question": "diviser par 4 ",
+        "answer": "Pour diviser le montant total TTC de la facture par 4, nous prenons le montant de 2 398,80 EUR et le divisons par 4 :\n\n2 398,80 EUR \u00f7 4 = 599,70 EUR\n\nChaque part serait donc de 599,70 EUR."
+    },
+    {
+        "question": "diviser par 5",
+        "answer": "It seems like you're asking to divide a number by 5, but you haven't specified which number you're referring to. Could you please provide more details or clarify which number you would like to divide by 5?"
+    },
+    {
+        "question": "ce montant",
+        "answer": "Le montant total TTC de la facture est de 2 398,80 EUR. Si vous souhaitez diviser ce montant par 5, cela donnerait :\n\n2 398,80 EUR / 5 = 479,76 EUR\n\nChaque part serait donc de 479,76 EUR."
+    }
+]
