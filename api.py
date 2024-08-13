@@ -18,7 +18,7 @@ import random
 import string
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])
+CORS(app, resources={r"/*": {"origins": "*"}})
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['DATA_JSON_FOLDER'] = 'data_json'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -76,11 +76,11 @@ def get_conversation_chain(vectorstore, model_name="gpt-4-turbo"):
 
 def connect_to_db():
     return mysql.connector.connect(
-            host="172.30.1.200",
-            user="remote",
-            password="snomone2014",
+            host="127.0.0.1",
+            user="root",
+            password="snomone*2014",
             port=3306,
-            database="240109_voice_bot"
+            database="chatpdf"
         )
 
 def stock_in_file2(question,answer):
@@ -178,7 +178,56 @@ def check_file_if_exist(file_json):
         return True
     else:
         return False
+
+def rename_identifiant_in_table_chatpdf_history(identifiant, id):
+    connection = connect_to_db()
+    cursor = connection.cursor()
     
+    try:
+        cursor.execute("UPDATE chatpdf_history SET identifiant = %s WHERE id = %s", (identifiant, id))
+        connection.commit()
+        
+        if cursor.rowcount > 0:
+            print("Updated successfully.")
+            return True
+        else:
+            print("Update failed or no changes made.")
+            return False
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return False
+    finally:
+        cursor.close()
+        connection.close()
+    
+def delete_record_from_chatpdf_history(id):
+    connection = connect_to_db()
+    
+    if not connection.is_connected():
+        print("Failed to connect to the database.")
+        return False
+
+    cursor = connection.cursor()
+    
+    try:
+        cursor.execute("DELETE FROM chatpdf_history_files WHERE chatpdf_history_id = %s", (id,))
+        cursor.execute("DELETE FROM chatpdf_history WHERE id = %s", (id,))
+        connection.commit()
+        
+        if cursor.rowcount > 0:
+            print("Deleted successfully.")
+            return True
+        else:
+            print("Delete failed or record not found.")
+            return False
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        connection.rollback()
+        return False
+    finally:
+        cursor.close()
+        connection.close()
+               
 def get_file_id(file):
     connection = connect_to_db()
     cursor = connection.cursor()
@@ -292,13 +341,7 @@ def get_data_files():
 def get_data_history():
     history_file = request.json.get('history_file_json')
     history_id = request.json.get('history_id')
-    file_labels = get_file_by_id(history_id)
-    
-    print("history_file")
-    print(history_file)
-    print("file_labels")
-    print(file_labels)   
-        
+    file_labels = get_file_by_id(history_id)          
     file_path = []
     
     for file_label in file_labels:
@@ -325,12 +368,12 @@ def get_data_history():
 
     vectorstore = get_vectorstore(text_chunks, "gpt-4-turbo")
     session_state["conversation"] = get_conversation_chain(vectorstore)
-    
-    content_file = read_json_file(app.config['DATA_JSON_FOLDER'], history_file)
-    if content_file is None:
-        return jsonify({"error": "History file not found"}), 404
-    elif content_file == []:
-        return [] 
+    if os.path.exists(os.path.join(app.config['DATA_JSON_FOLDER'], history_file)):
+        content_file = read_json_file(app.config['DATA_JSON_FOLDER'], history_file)
+        if content_file is None:
+            return jsonify({"error": "History file not found"}), 404
+        elif content_file == []:
+            return [] 
     
     return jsonify(content_file)
 
@@ -395,6 +438,19 @@ def query_model():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/rename', methods=['POST'])
+def rename_identifiant():
+    history_identifiant = request.json.get('identifiant')
+    history_id = request.json.get('history_id')
+    data = rename_identifiant_in_table_chatpdf_history(history_identifiant,history_id)
+    return jsonify(data)
+
+@app.route('/delete', methods=['POST'])
+def delete_conversation():
+    history_id = request.json.get('history_id')
+    data = delete_record_from_chatpdf_history(history_id)
+    return jsonify(data)
 
 if __name__ == "__main__":
     app.config["JSON_AS_ASCII"] = False
