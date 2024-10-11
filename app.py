@@ -502,7 +502,6 @@ def data_data(file=""):
 
 def get_responses(user_question):  
         response = st.session_state.conversation({"question": user_question})
-        return response
         st.session_state.chat_history = response["chat_history"]
         question= ''
         answer= ''
