@@ -118,10 +118,10 @@ def stock_in_file(question,answer,upload_json):
         print("Either 'question' or 'answer' is empty. Please provide both.")
 
 
-def get_files_name():
+def get_files_name(user_id):
     connection = connect_to_db()
     cursor = connection.cursor()
-    cursor.execute("SELECT * FROM chatpdf_history ORDER BY created_at DESC;")
+    cursor.execute("SELECT * FROM chatpdf_history WHERE user_id = %s ORDER BY created_at DESC;",(user_id,))
     data = cursor.fetchall()
     connection.close()
     return data
@@ -319,7 +319,7 @@ def process_files_and_history(files, file_stock_json):
     else:
         print("file already exist")
 
-def process_insert_into_files_and_history(files, file_stock_json,descriptions,identifiant):    
+def process_insert_into_files_and_history(files, file_stock_json,descriptions,identifiant,user_id):    
     file_exist = check_file_if_exist(file_stock_json)
     if not file_exist:
         file_ids = []
@@ -336,7 +336,7 @@ def process_insert_into_files_and_history(files, file_stock_json,descriptions,id
         # random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=5))
         # identifiant = 'file_'+random_string+'_'+ now.strftime("%Y-%m-%d %H:%M:%S")
         # Insert chat history
-        cursor.execute("INSERT INTO chatpdf_history (identifiant, file_stock_json) VALUES (%s, %s)", (identifiant, file_stock_json))
+        cursor.execute("INSERT INTO chatpdf_history (identifiant, file_stock_json, user_id) VALUES (%s, %s, %s)", (identifiant, file_stock_json, user_id))
         history_id = cursor.lastrowid
         
         # Associate files with chat history
@@ -405,7 +405,7 @@ def data_history(history_id,history_file,folder_json,upload_folder):
     return content_file
 
 
-async def upload_file(files,upload_json,upload_folder,descriptions):
+async def upload_file(files,upload_json,upload_folder,descriptions,user_id):
     # description = ''
     initialize_data()
     if not files:
@@ -430,7 +430,7 @@ async def upload_file(files,upload_json,upload_folder,descriptions):
     # session_state['file_names'] = '__'.join([os.path.basename(f)[:-4] for f in file_paths])+word_json
     
     session_state['file_names'] = file_name_json
-    process_insert_into_files_and_history(file_stock, file_name_json,session_state['hold_descriptions'],identifiant)
+    process_insert_into_files_and_history(file_stock, file_name_json,session_state['hold_descriptions'],identifiant,user_id)
     stock_in_file('','',upload_json)
     
     
@@ -492,3 +492,27 @@ def get_response(user_question,upload_json):
 
     except Exception as e:
         return {"error": str(e)}
+    
+
+def login(username,password):
+    connection = connect_to_db()
+    cursor = connection.cursor()
+    cursor.execute("SELECT username,password FROM users WHERE username = %s and password = %s", (username,password,))
+    result = cursor.fetchall()
+    
+    
+    if result[0] is None or not result[0].verify_password(password):  # Assuming you have a method to verify passwords
+        return jsonify({
+            'status': 'error',
+            'error': 'invalid.credentials',
+            'msg': 'Invalid Credentials.',
+        }), 400
+        
+    connection.close()
+    # Create a token
+    token = create_access_token(identity=user.username)
+    
+    # Return token with Authorization header
+    response = jsonify(token)
+    response.headers['Authorization'] = token
+    return response, 200
