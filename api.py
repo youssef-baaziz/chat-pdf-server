@@ -4,7 +4,7 @@ from flask import Flask, request, jsonify
 import os
 import asyncio
 import jwt
-from flask_jwt_extended import create_access_token, jwt_required, JWTManager, get_jwt_identity
+from flask_jwt_extended import create_access_token,create_refresh_token, jwt_required, get_jwt, JWTManager, get_jwt_identity
 from flask_cors import CORS
 from datetime import timedelta  # Import timedelta for token expiration
 
@@ -13,10 +13,11 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['DATA_JSON_FOLDER'] = 'data_json'
-app.config['JWT_SECRET_KEY'] = 'test2024'  # Change this to a random secret key
+app.config['JWT_SECRET_KEY'] = 'chatpdf'  # Change this to a random secret key
 
 # Set token expiration to 1 hour
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=2)
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(minutes=15)
+app.config['JWT_REFRESH_TOKEN_EXPIRES'] = timedelta(days=2)
 
 jwt = JWTManager(app)
 
@@ -30,13 +31,32 @@ def get_data_files():
     data = chatpdf.get_files_name(user_id)
     return jsonify(data)
 
+@app.route('/files-by-history', methods=['POST'])
+async def get_data_files_by_history():
+    history_id = request.json.get('history_id')
+    loop = asyncio.get_running_loop()
+    files = await loop.run_in_executor(None, chatpdf.get_file_by_id, history_id)
+    return jsonify({"files": files})
+
+# @app.route('/history', methods=['POST'])
+# def get_data_history():
+#     history_file = request.json.get('history_file_json')
+#     history_id = request.json.get('history_id')
+#     history = chatpdf.data_history(history_id, history_file, app.config['DATA_JSON_FOLDER'], app.config['UPLOAD_FOLDER'])
+#     files = chatpdf.get_file_by_id(history_id)
+#     return jsonify({"history": history, "files": files})
+
 @app.route('/history', methods=['POST'])
-def get_data_history():
+async def get_data_history():
     history_file = request.json.get('history_file_json')
     history_id = request.json.get('history_id')
-    history = chatpdf.data_history(history_id, history_file, app.config['DATA_JSON_FOLDER'], app.config['UPLOAD_FOLDER'])
-    files = chatpdf.get_file_by_id(history_id)
-    return jsonify({"history": history, "files": files})
+    
+    # Run the synchronous function in a thread pool
+    loop = asyncio.get_running_loop()
+    history = await loop.run_in_executor(None, chatpdf.data_history, history_id, history_file, app.config['DATA_JSON_FOLDER'], app.config['UPLOAD_FOLDER'])
+    
+    return jsonify({"history": history})
+
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -62,18 +82,26 @@ def login():
     user = User.verify(username, password)
     if user:
         # Create JWT token
-        token = create_access_token(identity=user['username'])
-        return jsonify(access_token=token), 200
+        access_token = create_access_token(identity=user['username'])
+        refresh_token = create_refresh_token(identity=user['username'])
+        return jsonify(access_token=access_token, refresh_token=refresh_token), 200
     return jsonify({"msg": "Invalid credentials"}), 401
+
+# Refresh route to renew access token using the refresh token
+@app.route('/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    """Endpoint to refresh the access token."""
+    current_user = get_jwt_identity()
+    new_access_token = create_access_token(identity=current_user)
+    return jsonify(access_token=new_access_token), 200
 
 @app.route('/user', methods=['GET'])
 @jwt_required()
 def get_user():
     """Get logged-in user's info."""
     current_user = get_jwt_identity()
-    user = User.get_by_username(current_user)  # Implement this method to get user info from the DB
-    print('user ---------')
-    print(user['id'])
+    user = User.get_by_username(current_user)
     return jsonify(user), 200
 
 @app.route('/logout', methods=['POST'])
@@ -95,8 +123,8 @@ def edit_add_description():
 async def upload_files():
     files = request.files.getlist('files')
     descriptions = request.form.getlist('description')
-    print(files)
-    print(descriptions)
+    print("files",files)
+    print("descriptions",descriptions)
     user_id = request.form.get('user_id')
     data = await chatpdf.upload_file(files, app.config['DATA_JSON_FOLDER'], app.config['UPLOAD_FOLDER'], descriptions, user_id)
     return jsonify(data)
@@ -137,6 +165,16 @@ def delete_file():
     data = chatpdf.delete_file(file_id)
     return jsonify(data)
 
+
+@app.route('/upload-other-files', methods=['POST'])
+@jwt_required()
+async def upload_other_files():
+    history_id = request.form.get('history_id')
+    new_files = request.files.getlist('new_files')
+    descriptions = request.form.getlist('new_descriptions')
+    data = await chatpdf.upload_and_process_files(new_files, app.config['UPLOAD_FOLDER'], history_id, descriptions)
+    return jsonify(data)
+
 @app.route('/ping', methods=['GET'])
 def ping():
     return 'hello'
@@ -145,4 +183,4 @@ if __name__ == "__main__":
     app.config["JSON_AS_ASCII"] = False
     app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
     app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
-    app.run(host="0.0.0.0", port=5054)
+    app.run(host="0.0.0.0", port=5055)
