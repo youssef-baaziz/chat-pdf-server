@@ -38,25 +38,25 @@ async def get_data_files_by_history():
     files = await loop.run_in_executor(None, chatpdf.get_file_by_id, history_id)
     return jsonify({"files": files})
 
-# @app.route('/history', methods=['POST'])
-# def get_data_history():
-#     history_file = request.json.get('history_file_json')
-#     history_id = request.json.get('history_id')
-#     history = chatpdf.data_history(history_id, history_file, app.config['DATA_JSON_FOLDER'], app.config['UPLOAD_FOLDER'])
-#     files = chatpdf.get_file_by_id(history_id)
-#     return jsonify({"history": history, "files": files})
-
 @app.route('/history', methods=['POST'])
 async def get_data_history():
     history_file = request.json.get('history_file_json')
-    history_id = request.json.get('history_id')
     
     # Run the synchronous function in a thread pool
     loop = asyncio.get_running_loop()
-    history = await loop.run_in_executor(None, chatpdf.data_history, history_id, history_file, app.config['DATA_JSON_FOLDER'], app.config['UPLOAD_FOLDER'])
+    history = await loop.run_in_executor(None, chatpdf.data_history, history_file, app.config['DATA_JSON_FOLDER'])
     
     return jsonify({"history": history})
 
+
+@app.route('/treated-file', methods=['POST'])
+def treated_file():
+    history_file = request.json.get('history_file_json')
+    history_id = request.json.get('history_id')
+    
+    treated = chatpdf.traiter_file_have_history(history_id, history_file, app.config['UPLOAD_FOLDER'])
+    
+    return jsonify(treated)
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -183,4 +183,4 @@ if __name__ == "__main__":
     app.config["JSON_AS_ASCII"] = False
     app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
     app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
-    app.run(host="0.0.0.0", port=5055)
+    app.run(host="0.0.0.0", port=5052)

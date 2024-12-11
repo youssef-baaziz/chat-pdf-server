@@ -7,7 +7,7 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.chat_models import ChatOpenAI
-from langchain.memory import ConversationBufferMemory
+from langchain.memory import ConversationBufferMemory,ConversationSummaryMemory
 from langchain.chains import ConversationalRetrievalChain
 import mysql.connector
 import aiofiles
@@ -69,41 +69,57 @@ def get_text_from_doc2(docs, descriptions=None):
     text = ""
     
     for i, doc in enumerate(docs):
-        # Add description if available
-        if descriptions and i < len(descriptions):
-            text += descriptions[i] + "\n"
         
-        # Handle PDF files
-        if doc.endswith(".pdf"):
-            pdf_reader = PdfReader(doc)
-            for page in pdf_reader.pages:
-                text += page.extract_text() or ""
+        file_content = ""
+        file_name = os.path.basename(doc)
+        description = descriptions[i] if descriptions and i < len(descriptions) else "No description provided"
         
-        # Handle plain text (.txt) files
-        elif doc.endswith(".txt"):
-            text += doc.read().decode("utf-8")
+        file_content += f"Name of the file: {file_name}\n"
+        file_content += f"Description: {description}\n"
+        file_content += "Content:\n"
         
-        # Handle .docx (Word) files
-        elif doc.endswith(".docx"):
-            doc = fitz.open(doc)
+        try:
+            
+            # Add description if available
+            # if descriptions and i < len(descriptions):
+            #     text += descriptions[i] + "\n"
+        
+            # Handle PDF files
+            if doc.endswith(".pdf"):
+                pdf_reader = PdfReader(doc)
+                for page in pdf_reader.pages:
+                    file_content += page.extract_text() or ""
+            
+            # Handle plain text (.txt) files
+            elif doc.endswith(".txt"):
+                # file_content += doc.read().decode("utf-8")
+                with open(doc, 'r', encoding="utf-8") as f:
+                    file_content += f.read()
+            
+            # Handle .docx (Word) files
+            elif doc.endswith(".docx"):
+                doc = fitz.open(doc)
 
-            # Extract text from each page of the document
-            for page_num in range(doc.page_count):
-                page = doc.load_page(page_num)
-                text = page.get_text()
-                print(text)
+                # Extract text from each page of the document
+                for page_num in range(doc.page_count):
+                    page = doc.load_page(page_num)
+                    file_content = page.get_text()
+                    print(file_content)
                 
-            # docx = Document(doc)
-            # for para in docx.paragraphs:
-            #     text += para.text + "\n"
+                # docx = Document(doc)
+                # for para in docx.paragraphs:
+                #     file_content += para.text + "\n"
         
-        # Handle generic file types like .rtf or others by opening
-        else:
-            try:
+            # Handle generic file types like .rtf or others by opening
+            else:
                 with open(doc, 'r', encoding='utf-8') as file:
-                    text += file.read()
-            except Exception as e:
-                text += f"\nError reading {os.path.basename(doc)}: {e}\n"
+                    file_content += file.read()
+                    
+        except Exception as e:
+            file_content += f"\nError reading file: {e}\n"
+        
+        # Append this file's content to the main text
+        text += file_content + "\n" + "-" * 80 + "\n"
 
     return text
 
@@ -122,9 +138,12 @@ def get_vectorstore(text_chunks, model_name):
     vectorstore = FAISS.from_texts(texts=text_chunks, embedding=embeddings)
     return vectorstore
 
-def get_conversation_chain(vectorstore, model_name="gpt-3.5-turbo-0125"):
-    llm = ChatOpenAI(temperature=0.2, model_name=model_name, openai_api_key=openai_key)
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+def get_conversation_chain(vectorstore, model_name="gpt-4"):
+    # model_name="gpt-3.5-turbo-0125"
+    llm = ChatOpenAI(temperature=0.5, model_name=model_name, openai_api_key=openai_key)
+    # llm = ChatOpenAI(temperature=0.2, model_name=model_name, openai_api_key=openai_key)
+    memory = ConversationSummaryMemory(memory_key="chat_history", return_messages=True,llm=llm)
+    # memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
     conversation_chain = ConversationalRetrievalChain.from_llm(
         llm=llm, retriever=vectorstore.as_retriever(), memory=memory
     )
@@ -134,9 +153,9 @@ def connect_to_db():
     return mysql.connector.connect(
             host="127.0.0.1",
             user="root",
-            password="snomone*2014",
+            password="",
             port=3306,
-            database="chatpdf"
+            database="ask_multi_documents"
         )
 
 def stock_in_file(question,answer,upload_json):
@@ -327,6 +346,8 @@ def insert_file(file):
     return file_id
 
 def insert_in_table_files(file,description):
+    if description is None:
+        description = ""
     connection = connect_to_db()
     cursor = connection.cursor()
     cursor.execute("INSERT INTO chatpdf_files (file,description) VALUES (%s,%s)", (file,description))
@@ -434,6 +455,8 @@ def read_json_file(directory, filename):
         # Open and read the JSON file
         with open(file_path, 'r') as file:
             data = json.load(file)
+        # async with aiofiles.open(file_path, mode='r') as file:
+        #     data = await file.read()
             return data
     else:
         return None
@@ -449,8 +472,9 @@ async def save_file(file,upload_folder):
         return None
     return file_path
 
-def data_history(history_id,history_file,folder_json,upload_folder):
-    file_labels = get_file_by_id(history_id)       
+def traiter_file_have_history(history_id,history_file,upload_folder):
+    file_labels = get_file_by_id(history_id)    
+    print("test",file_labels)   
     file_path = []
     descriptions = []
     
@@ -462,6 +486,41 @@ def data_history(history_id,history_file,folder_json,upload_folder):
     print("descriptions",descriptions)
     process_file2(file_path,descriptions)
     
+def data_history(history_file,folder_json):
+    # file_labels = get_file_by_id(history_id)       
+    # file_path = []
+    # descriptions = []
+    
+    # for file_label in file_labels:
+    #     descriptions.append(file_label[2])
+    #     file_path.append(os.path.join(upload_folder, file_label[1]))
+    
+    # session_state['file_names'] = history_file
+    # print("descriptions",descriptions)
+    # process_file2(file_path,descriptions)
+    content_file = []
+    if os.path.exists(os.path.join(folder_json, history_file)):
+        content_file = read_json_file(folder_json, history_file)
+        if content_file is None:
+            return {"error": "History file not found"}
+        elif content_file == []:
+            return [] 
+    
+    return content_file
+
+def data_history(history_file,folder_json):
+    # file_labels = get_file_by_id(history_id)       
+    # file_path = []
+    # descriptions = []
+    
+    # for file_label in file_labels:
+    #     descriptions.append(file_label[2])
+    #     file_path.append(os.path.join(upload_folder, file_label[1]))
+    
+    # session_state['file_names'] = history_file
+    # print("descriptions",descriptions)
+    # process_file2(file_path,descriptions)
+    content_file = []
     if os.path.exists(os.path.join(folder_json, history_file)):
         content_file = read_json_file(folder_json, history_file)
         if content_file is None:
@@ -533,18 +592,22 @@ async def upload_file(files,upload_json,upload_folder,descriptions,user_id):
 
 
 def process_file2(file_paths, descriptions):
-    if not file_paths:
-        return {"error": "No files to process"}
-    
-    if not descriptions or len(descriptions) != len(file_paths):
-        return {"error": "Descriptions count does not match files count"}
+    if not file_paths or not descriptions or len(file_paths) != len(descriptions):
+        return {"error": "Mismatch between file paths and descriptions"}
 
     raw_text = get_text_from_doc2(file_paths, descriptions)
-    
+    print('raw_text\n',raw_text)
     if not raw_text:
         return {"error": "No text extracted from the files"}
-
-    do_split = False
+    
+    text_size = len(raw_text)  # Use len(raw_text) for characters or tokenize it for word/token count
+    if text_size < 500:
+        do_split = False  # Small text
+    elif 500 <= text_size <= 2000:
+        do_split = True  # Medium text
+    else:
+        do_split = True  # Large text
+   
     text_chunks = process_text(raw_text, do_split=do_split)
 
     vectorstore = get_vectorstore(text_chunks, "gpt-4-turbo")
@@ -624,3 +687,42 @@ async def upload_and_process_files(new_files,upload_folder,history_id,new_descri
 
     return {"message": "Other files uploaded and processed successfully"}
 
+section_files = [
+    {
+        
+    }
+]
+async def data_section(files,upload_json,upload_folder,descriptions,user_id):
+    
+    initialize_data()
+    if not files:
+        return {"error": "No files provided"}
+    file_stock = []
+    
+    now = datetime.now()
+    random_string = ''.join(random.choices(string.ascii_letters + string.digits, k=5))
+    identifiant = 'file_'+random_string+'_'+ now.strftime("%Y-%m-%d %H:%M:%S")
+    file_name_json = 'file_'+random_string+'_'+ now.strftime("%Y-%m-%d %H-%M-%S")+word_json
+    
+    file_paths = await asyncio.gather(*[save_file(file,upload_folder) for file in files])
+    
+    for file_path in file_paths:
+        if os.path.isfile(file_path):
+            file_name = os.path.basename(file_path)
+            file_stock.append(file_name)
+            
+    session_state['hold_descriptions'] = descriptions
+    
+    # file_name_json = '__'.join([os.path.basename(f)[:-4] for f in file_paths])+word_json
+    # session_state['file_names'] = '__'.join([os.path.basename(f)[:-4] for f in file_paths])+word_json
+    
+    session_state['file_names'] = file_name_json
+    process_insert_into_files_and_history(file_stock, file_name_json,session_state['hold_descriptions'],identifiant,user_id)
+    stock_in_file('','',upload_json)
+    
+    
+    # session_state['hold_descriptions'].append(description)
+    session_state['hold_files'].extend(file_paths)
+    process_file2(session_state['hold_files'],session_state['hold_descriptions']);
+
+    return {"message": "Files uploaded and processed successfully"}
