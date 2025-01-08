@@ -1,4 +1,5 @@
 import chatpdf
+import database
 from models import User
 from flask import Flask, request, jsonify
 import os
@@ -28,14 +29,14 @@ os.makedirs(app.config['DATA_JSON_FOLDER'], exist_ok=True)
 @app.route('/files', methods=['POST'])
 def get_data_files():
     user_id = request.json.get('user_id')
-    data = chatpdf.get_files_name(user_id)
+    data = database.get_files_name(user_id)
     return jsonify(data)
 
 @app.route('/files-by-history', methods=['POST'])
 async def get_data_files_by_history():
     history_id = request.json.get('history_id')
     loop = asyncio.get_running_loop()
-    files = await loop.run_in_executor(None, chatpdf.get_file_by_id, history_id)
+    files = await loop.run_in_executor(None, database.get_file_by_id, history_id)
     return jsonify({"files": files})
 
 @app.route('/history', methods=['POST'])
@@ -48,6 +49,21 @@ async def get_data_history():
     
     return jsonify({"history": history})
 
+@app.route('/section', methods=['POST'])
+def new_conversation_by_section():
+    section_label = request.json.get('section_label')
+    user_id = request.json.get('user_id')
+    data = chatpdf.get_new_conversation_by_section(section_label,app.config['DATA_JSON_FOLDER'],app.config['UPLOAD_FOLDER'],user_id)
+    
+    return jsonify({"data": data})
+
+@app.route('/list-section', methods=['POST'])
+@jwt_required()
+def get_section():
+    user_id = request.json.get('user_id')
+    data = database.get_section_by_user(user_id)
+    
+    return jsonify(data)
 
 @app.route('/treated-file', methods=['POST'])
 def treated_file():
@@ -115,7 +131,7 @@ def logout_user():
 def edit_add_description():
     file = request.json.get('filename')
     description = request.json.get('description')
-    data = chatpdf.updateDescription(file, description) 
+    data = database.updateDescription(file, description)
     return jsonify(data)
 
 @app.route('/upload', methods=['POST'])
@@ -123,9 +139,10 @@ def edit_add_description():
 async def upload_files():
     files = request.files.getlist('files')
     descriptions = request.form.getlist('description')
-    print("files",files)
-    print("descriptions",descriptions)
     user_id = request.form.get('user_id')
+    print('files =>',files)
+    for file in files:
+        print(file.filename)
     data = await chatpdf.upload_file(files, app.config['DATA_JSON_FOLDER'], app.config['UPLOAD_FOLDER'], descriptions, user_id)
     return jsonify(data)
 
@@ -140,7 +157,7 @@ def query_model():
 @jwt_required()
 def get_files_selected():
     history_id = request.json.get('history_id')
-    files = chatpdf.get_file_by_id(history_id)
+    files = database.get_file_by_id(history_id)
     return jsonify(files)
 
 @app.route('/rename', methods=['POST'])
@@ -148,21 +165,21 @@ def get_files_selected():
 def rename_identifiant():
     history_identifiant = request.json.get('identifiant')
     history_id = request.json.get('history_id')
-    data = chatpdf.rename_identifiant_in_table_chatpdf_history(history_identifiant, history_id)
+    data = database.rename_identifiant_in_table_chatpdf_history(history_identifiant, history_id)
     return jsonify(data)
 
 @app.route('/delete', methods=['POST'])
 @jwt_required()
 def delete_conversation():
     history_id = request.json.get('history_id')
-    data = chatpdf.delete_record_from_chatpdf_history(history_id)
+    data = database.delete_record_from_chatpdf_history(history_id)
     return jsonify(data)
 
 @app.route('/delete-file', methods=['POST'])
 @jwt_required()
 def delete_file():
     file_id = request.json.get('file_id')
-    data = chatpdf.delete_file(file_id)
+    data = database.delete_file(file_id)
     return jsonify(data)
 
 
