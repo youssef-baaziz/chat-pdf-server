@@ -1,1 +1,16 @@
 /.env
+node_modules
+venv/
+myvenv/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Pip and package managers
+pip-log.txt
+pip-delete-this-directory.txt

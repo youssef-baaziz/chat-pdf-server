@@ -8,10 +8,14 @@ import jwt
 from flask_jwt_extended import create_access_token,create_refresh_token, jwt_required, get_jwt, JWTManager, get_jwt_identity
 from flask_cors import CORS
 from datetime import timedelta  # Import timedelta for token expiration
-
+from flask_socketio import SocketIO, emit
+import threading
+            
 app = Flask(__name__)
-
+         
+socketio = SocketIO(app, cors_allowed_origins="*", supports_credentials=True)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['DATA_JSON_FOLDER'] = 'data_json'
 app.config['JWT_SECRET_KEY'] = 'chatpdf'  # Change this to a random secret key
@@ -24,7 +28,7 @@ jwt = JWTManager(app)
 
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['DATA_JSON_FOLDER'], exist_ok=True)
-
+    
 # Start the APIs
 @app.route('/files', methods=['POST'])
 def get_data_files():
@@ -140,18 +144,31 @@ async def upload_files():
     files = request.files.getlist('files')
     descriptions = request.form.getlist('description')
     user_id = request.form.get('user_id')
-    print('files =>',files)
-    for file in files:
-        print(file.filename)
     data = await chatpdf.upload_file(files, app.config['DATA_JSON_FOLDER'], app.config['UPLOAD_FOLDER'], descriptions, user_id)
+    # file_check_thread = threading.Thread(target=chatpdf.delete_record_from_chatpdf_history_if_stay_vide, args=(data['history_id'],app.config['DATA_JSON_FOLDER']))
+    # file_check_thread.daemon = True  # Ensures the thread exits when the main program exits
+    # file_check_thread.start()
     return jsonify(data)
 
-@app.route('/response', methods=['POST'])
-@jwt_required()
-def query_model():
-    user_question = request.json.get('question', '')
-    data = chatpdf.get_response(user_question, app.config['DATA_JSON_FOLDER'])
-    return jsonify(data)
+# @app.route('/delete-vide-history', methods=['POST'])
+# @jwt_required()
+# def delete_vide_history():
+#     history_id = request.json.get('history_id')
+#     # data = chatpdf.delete_record_from_chatpdf_history_if_stay_vide(history_id,app.config['DATA_JSON_FOLDER'])
+#     data = []
+#     return jsonify(data)
+
+@socketio.on('start_stream')
+def handle_message(data):
+    question = data.get('question', '')
+    print(f"Received question: {question}")
+    
+    # Call get_response with an emit function that streams chunks
+    chatpdf.get_response(
+        user_question=question, 
+        upload_json=app.config['DATA_JSON_FOLDER'], 
+        emit_func=emit
+    )
 
 @app.route('/files-select', methods=['POST'])
 @jwt_required()
@@ -200,4 +217,4 @@ if __name__ == "__main__":
     app.config["JSON_AS_ASCII"] = False
     app.config["JSONIFY_PRETTYPRINT_REGULAR"] = True
     app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024
-    app.run(host="0.0.0.0", port=5052)
+    socketio.run(app, host="0.0.0.0", port=5052, debug=True)

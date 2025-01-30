@@ -1,0 +1,26 @@
+[
+    {
+        "question": "hi",
+        "answer": "\"Hi\" is a casual and commonly used greeting in English, equivalent to saying \"hello\"."
+    },
+    {
+        "question": "donne moi la resume de ce fichier ",
+        "answer": "Je suis d\u00e9sol\u00e9, mais aucune information sp\u00e9cifique n'est fournie dans le contenu du fichier. Le nom du fichier sugg\u00e8re qu'il pourrait \u00eatre une facture de BubbleIn Service IT 2, mais sans plus de d\u00e9tails, je ne peux pas fournir un r\u00e9sum\u00e9 pr\u00e9cis."
+    },
+    {
+        "question": "ok donne moi le nom de le fichier",
+        "answer": "Le nom du fichier est \"Facture_FBBI0000000015_BubbleIn Service IT 2.pdf\"."
+    },
+    {
+        "question": "la resume",
+        "answer": "The file is named \"Facture_FBBI0000000015_BubbleIn Service IT 2.pdf\" and its description is \"test1\". There is no content provided in the file for a summary."
+    },
+    {
+        "question": "why",
+        "answer": "The AI couldn't provide a precise summary of the file because the content of the file is not provided in the context."
+    },
+    {
+        "question": "ok",
+        "answer": "The context provided does not include any information about \"ok\"."
+    }
+]

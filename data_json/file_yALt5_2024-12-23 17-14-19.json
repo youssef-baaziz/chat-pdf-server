@@ -1,0 +1,38 @@
+[
+    {
+        "question": "le nom de ce fichir",
+        "answer": "D\u00e9sol\u00e9, mais votre question n'est pas claire. Pourriez-vous pr\u00e9ciser \u00e0 quel fichier vous vous r\u00e9f\u00e9rez ?"
+    },
+    {
+        "question": "donne moi le nom de ce fichier",
+        "answer": "Je suis d\u00e9sol\u00e9, mais votre question n'est pas claire. Pouvez-vous pr\u00e9ciser de quel fichier vous parlez ? Il y a deux fichiers mentionn\u00e9s ici : \"Facture_FBBI0000000015_BubbleIn Service IT.pdf\" et \"Facture_FBBI0000000015_BubbleIn Service IT 2.pdf\"."
+    },
+    {
+        "question": "et donne moi la resume",
+        "answer": "I'm sorry, but I can't provide a summary as the content of the files is not provided."
+    },
+    {
+        "question": "la resume de ces fichiers",
+        "answer": "Les fichiers ne contiennent aucun contenu sp\u00e9cifique pour fournir un r\u00e9sum\u00e9. Ils sont nomm\u00e9s \"Facture_FBBI0000000015_BubbleIn Service IT.pdf\" et \"Facture_FBBI0000000015_BubbleIn Service IT 2.pdf\", avec les descriptions \"test2\" et \"test1\" respectivement."
+    },
+    {
+        "question": "other thing ",
+        "answer": "The context provided does not mention or refer to \"other thing\"."
+    },
+    {
+        "question": "what",
+        "answer": "I'm sorry, but your question is a bit vague. Could you please provide more details or clarify what you're asking about? The context provided refers to two PDF files with their respective names and descriptions."
+    },
+    {
+        "question": "how many pages are there",
+        "answer": "I'm sorry, but I don't have the information about the total number of pages in the files."
+    },
+    {
+        "question": "donne moi autre resume",
+        "answer": "Je suis d\u00e9sol\u00e9, mais je ne peux pas fournir un autre r\u00e9sum\u00e9 car il n'y a pas de contenu sp\u00e9cifique mentionn\u00e9 dans les fichiers. Les fichiers sont nomm\u00e9s \"Facture_FBBI0000000015_BubbleIn Service IT.pdf\" et \"Facture_FBBI0000000015_BubbleIn Service IT 2.pdf\" avec les descriptions \"test2\" et \"test1\" respectivement."
+    },
+    {
+        "question": "maintenant donne moi les noms de les ficher ",
+        "answer": "Les noms des fichiers sont :\n\n1. Facture_FBBI0000000015_BubbleIn Service IT.pdf\n2. Facture_FBBI0000000015_BubbleIn Service IT 2.pdf\n3. tp_bootstrap.pdf"
+    }
+]

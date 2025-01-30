@@ -167,6 +167,14 @@ def get_file_by_id(history_id):
     connection.close()
     return [item for item in files]
 
+def get_file_json_by_id(history_id):
+    connection = connect_to_db()
+    cursor = connection.cursor()
+    cursor.execute("SELECT file_stock_json FROM chatpdf_history WHERE id = %s", (history_id,))
+    result = cursor.fetchone()
+    connection.close()
+    return result[0] if result else None
+
 def insert_file(file):
     connection = connect_to_db()
     cursor = connection.cursor()
@@ -266,8 +274,10 @@ def process_insert_into_files_and_history(files, file_stock_json,descriptions,id
         connection.close()
     
         print("History added successfuly.")
+        return history_id
     else:
         print("History already exists.")
+        return None
 
 def get_section_by_user(user_id):
     connection = connect_to_db()
